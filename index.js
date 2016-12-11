@@ -1,71 +1,57 @@
 var _ = require('lodash')
 
-function deflate(obj, columns){
-	var record = []
-	for(var c = 0; c < columns.length; c++) {
-		var column = columns[c]
-		record.push(_.get(obj, column))
-	}
-	return record
-}
-
-function inflate(array, columns){
-	var obj = {}
-	for(var c = 0; c < columns.length; c++) {
-		var column = columns[c]
-		obj[column] = array[c]
-	}
-	return obj
-}
-
-function matches(test,where){
-	for(var k in where) {
-		if(test[k] !== where[k]) return false
-	}
-	return true
-}
-
 class Model {
 
-	constructor (data) {
-		this.store = data || {}
-		this.schema = {} // enable flattening of objects into indexed tables
-		this.query = {}
-	}
+	constructor (schema,options) {
 
-	_insert(obj){
+		var worker = _.get(options, 'worker')
 
-		var schema = _.get(this.schema, this.query.table),
-			table = _.get(this.store, this.query.table)
-
-		if(schema) {
-			var record = deflate(obj, schema.columns)
-			for(var i = 0; i < record.length; i++) table.push(record[i])
-		} else {
-			table.push(obj)
+		if(worker && Worker) { // node doesn't use workers
+			this.worker = new Worker(worker)
+			this.worker.postMessage({
+				schema:schema
+			})
+			this.worker.onMessage = function(e){
+				console.log(e)
+			}
 		}
 
-		_.set(this.store, this.query.table, table)
+		this.schema = schema || {} // enable flattening of objects into indexed tables
+		this.store = {}
+		this.query = {}
+
+		for(var table in schema) this.store[table] = []
 
 	}
+
+	// append(record){
+	// 	this.store[this.query.table].push.apply(this.store[this.query.table], record)
+	// }
 
 	insert(insert) {
 		this.query.action = 'insert'
-		this.query.start = Date.now()
+		// this.query.start = Date.now()
 		this.query.insert = insert
+		return this
+	}
+
+	delete(table) {
+		this.query.action = 'delete'
+		// this.query.start = Date.now()
+		this.query.table = table
 		return this
 	}
 
 	select(table) {
 		this.query.action = 'select'
-		this.query.start = Date.now()
+		// this.query.start = Date.now()
 		this.query.table = table
 		return this
 	}
 
 	update(table) {
 		this.query.action = 'update'
-		this.query.start = Date.now()
+		// this.query.start = Date.now()
 		this.query.table = table
 		return this
 	}
@@ -86,124 +72,202 @@ class Model {
 		return this
 	}
 
-	exec (resolve) {
+	exec (_resolve) {
 
 		var table = _.get(this.store, this.query.table),
 			schema = _.get(this.schema, this.query.table),
-			resolve = resolve || function(results){ }
+			columns = _.get(schema, 'columns'),
+			resolve = resolve || function(results){ },
+			insert = this.query.insert || [],
+			set = deflate(this.query.set, columns),
+			where = deflate(this.query.where, columns),
+			TL = table.length,
+			CL = columns.length,
+			IL = insert.length,
+			iterate = function(iterator){
+				for(var i = 0; i < TL; i += CL) iterator(i, i + CL)
+			},
+			forEach = function(iterator){
+				iterate(function(start, end){
+					iterator(table.slice(start, end))
+				})
+			},
+			map = function(iterator){
 
-		// filter the table before doing anything else
-		if(this.query.where) {
+				var newTable = []
 
-			if(schema) {
+				forEach(function(slice){
+					newTable.push(iterator(slice))
+				})
 
-				var tmpTable = []
+				return newTable
 
-				for(var i = 0; i < table.length; i += schema.columns.length) {
+			},
+			filter = function(iterator){
 
-					var record = inflate(table.slice(i, (i + schema.columns.length)), schema.columns)
+				var newTable = []
 
-					if(matches(record, this.query.where)) {
-						for(var v = 0; v < schema.columns.length; v++) {
-							tmpTable.push(table[i+v])
-						}
-					}
+				forEach(function(slice){
+					if(iterator(slice)) newTable.push.apply(newTable, slice)
+				})
 
+				return newTable
+
+			},
+			resolve = function(data){
+
+				var res = {
+					action: this.query.action,
+					duration: Date.now() - this.query.start
 				}
 
-				table = tmpTable
+				if(data) res.data = data
 
-			} else {
+				this.store[this.query.table] = table
 
-				table = table.filter(function(record){
+				this.query = {}
 
-					return matches(record, this.query.where)
+				if(Array.isArray(res.data)) console.log(res.action+':','['+res.data.length+' records effected]',res.duration+'ms')
+				else if(typeof res.data === 'number') console.log(res.action+':','['+res.data+' records effected]',res.duration+'ms')
+				else console.log(res.action+': ',res.duration+'ms')
 
-				}.bind(this))
+				_resolve(res)
 
-			}
+			}.bind(this)
 
-
-		}
+		this.query.start = Date.now()
 
 		// insert
 		if(this.query.action === 'insert' && this.query.insert) {
 
-			if(Array.isArray(this.query.insert)) {
+			if(Array.isArray(insert)) {
 
-				this.query.insert.map(function(d){
-					this._insert(d, this.query.table)
-				}.bind(this))
+				for(let i = 0; i < IL; i++) {
+					if(IL > 5000) for(let k = 0; k < CL; k++) table.push(insert[i][columns[k]])
+					else table.push.apply(table, deflate(insert[i], columns))
+					// table = table.concat(deflate(insert[i], columns))
+				}
 
 			} else {
-				this._insert(this.query.insert, this.query.table)
+
+				table.push.apply(table, deflate(insert, columns))
+				// table = table.concat(deflate(insert, columns))
+
 			}
 
-			_.set(this.store, this.query.table, table)
-
-			resolve(this.query.insert)
+			return resolve(insert)
 
 		}
+
+
+		// delete
+		if(this.query.action === 'delete' && this.query.table) {
+
+			let newTable,
+				oldTableLength = 1 * table.length
+
+			if(this.query.where) {
+				newTable = filter(function(record){
+					return !matches(record, where)
+				})
+			} else {
+				newTable = [] // nuke the table
+			}
+
+			table = newTable
+
+			return resolve((oldTableLength - newTable.length) / columns.length)
+
+		}
+
 
 		// select
 		if(this.query.action === 'select') {
 
-			if(schema) {
+			let inflatedTable = (this.query.where) ?
+				map(function(slice){
+					if(matches(slice, where)){
+						return inflate(slice, columns)
+					}
+				}).filter(Boolean) :
+				map(function(slice){
+					return inflate(slice, columns)
+				})
 
-				var tmpTable = []
-
-				for(var i = 0; i < table.length; i += schema.columns.length) {
-					tmpTable.push(inflate(table.slice(i, (i + schema.columns.length)), schema.columns))
-				}
-
-				table = tmpTable
-
-			}
-
-			resolve(table)
+			return resolve(inflatedTable)
 
 		}
 
 		// update
-		if(this.query.action === 'update') {
+		if(this.query.action === 'update' && this.query.set) {
+			let recordsTouched = 0
+			if(this.query.where) {
 
-			if(this.query.set) {
-
-				if(schema) {
-
-					for(var i = 0; i < table.length; i += schema.columns.length) {
-
-						var record = inflate(table.slice(i, (i + schema.columns.length)), schema.columns)
-
-						_.merge(record, this.query.set)
-
-						record = deflate(record, schema.columns)
-
-						for(var v = 0; v < record.length; v++){
-							table[i+v] = record[v]
+				iterate(function(start, end){
+					if(matches(table.slice(start,end), where)) {
+						for(var i = 0; i < set.length; i++) {
+							table[start + i] = (set[i] !== undefined) ? set[i] : table[start + i]
 						}
-
+						recordsTouched++
 					}
+				})
 
-				} else {
-					table = table.map(function (record) {
-						return _.merge(record, this.query.set)
-					}.bind(this))
-				}
+				return resolve(recordsTouched)
 
-				_.set(this.store, this.query.table, table)
+			} else {
+
+				iterate(function(start, end){
+					for(var i = 0; i < set.length; i++) {
+						table[start + i] = (set[i] !== undefined) ? set[i] : table[start + i]
+					}
+					recordsTouched++
+				})
 
 			}
 
-			resolve(table)
+
+		return resolve(recordsTouched)
 
 		}
-		console.log(Date.now() - this.query.start)
-		this.query = {}
 
 	}
 
 
 }
+
+
+
+
+
+
+
+// ---------------------------------------------------------
+
+function deflate(obj, columns){
+	var record = []
+	for(var c = 0; c < columns.length; c++) {
+		record.push(_.get(obj, columns[c]))
+	}
+	return record
+}
+
+function inflate(array, columns){
+	var obj = {}
+	for(var c = 0; c < columns.length; c++) {
+		obj[columns[c]] = array[c]
+	}
+	return obj
+}
+
+function matches(test,where){
+	for(var k in where) {
+		if(test[k] !== where[k] && where[k] !== undefined) {
+			return false
+		}
+	}
+	return true
+}
+
+// ---------------------------------------------------------
 
 module.exports = Model
