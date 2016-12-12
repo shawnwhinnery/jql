@@ -3,29 +3,17 @@ var _ = require('lodash')
 
 /**
 * @constructor Model
-* Mass object store with an SQL like interface
+* 	Mass object store with an SQL like interface.
 */
 class Model {
 
-	constructor (schema,options) {
+	constructor (schema) {
 
-		var worker = _.get(options, 'worker')
-
-		if(worker && Worker) { // node doesn't use workers
-			this.worker = new Worker(worker)
-			this.worker.postMessage({
-				schema:schema
-			})
-			this.worker.onMessage = function(e){
-				// console.log(e)
-			}
-		}
-
-		this.schema = schema || {} // enable flattening of objects into indexed tables
+		this.schema = schema || {}
 		this.store = {}
 		this.query = {}
 
-		for(var table in schema) this.store[table] = []
+		for(var table in schema) this.store[table] = this.store[table] || []
 
 	}
 

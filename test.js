@@ -18,28 +18,39 @@ var Model = require('./index.js'),
 // setup
 var M = new Model({
 	tags: {
-		columns: ['id', 'name']
+		columns: [
+			'id',
+			'name'
+		]
 	},
 	users: {
-		columns: ['id', 'name', 'date']
+		columns: [
+			'id',
+			'name',
+			'date'
+		]
 	},
 	comments: {
-		columns: ['id', 'user', 'text']
+		columns: [
+			'id',
+			'user',
+			'text'
+		]
 	}
 })
 
 
-var users = [],
-	comments = [],
-	cid = 0,
-	USER_COUNT = 1000,
+var USER_COUNT = 1000,
 	COMMENTS_PER_USER = 100,
 	COMMENT_COUNT = USER_COUNT * COMMENTS_PER_USER,
 	FAILURES = 0,
 	SUCCESSES = 0,
 	TEST_START= Date.now(),
 	ERR = function(msg){console.log('!'.red.bold, msg); FAILURES++},
-	SUCCESS = function(msg, duration){console.log('√'.bold.green, msg, ('('+duration.toString()+'ms)').grey); SUCCESSES++}
+	SUCCESS = function(msg, duration){console.log('√'.bold.green, msg, ('('+duration.toString()+'ms)').grey); SUCCESSES++},
+	users = [],
+	comments = [],
+	cid = 0
 
 for(let u = 0; u < USER_COUNT; u++) {
 
