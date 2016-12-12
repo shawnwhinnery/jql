@@ -1,5 +1,10 @@
 var _ = require('lodash')
 
+
+/**
+* @constructor Model
+* Mass object store with an SQL like interface
+*/
 class Model {
 
 	constructor (schema,options) {
@@ -24,34 +29,35 @@ class Model {
 
 	}
 
-	// append(record){
-	// 	this.store[this.query.table].push.apply(this.store[this.query.table], record)
-	// }
+	/**
+	* @method count
+	* @memberof Model
+	* Returns the number of records in a table
+	*/
+	count(table) {
+		return this.store[table].length / this.schema[table].columns.length
+	}
 
 	insert(insert) {
 		this.query.action = 'insert'
-		// this.query.start = Date.now()
 		this.query.insert = insert
 		return this
 	}
 
 	delete(table) {
 		this.query.action = 'delete'
-		// this.query.start = Date.now()
 		this.query.table = table
 		return this
 	}
 
 	select(table) {
 		this.query.action = 'select'
-		// this.query.start = Date.now()
 		this.query.table = table
 		return this
 	}
 
 	update(table) {
 		this.query.action = 'update'
-		// this.query.start = Date.now()
 		this.query.table = table
 		return this
 	}
@@ -128,9 +134,9 @@ class Model {
 
 				this.query = {}
 
-				if(Array.isArray(res.data)) console.log(res.action+':','['+res.data.length+' records effected]',res.duration+'ms')
-				else if(typeof res.data === 'number') console.log(res.action+':','['+res.data+' records effected]',res.duration+'ms')
-				else console.log(res.action+': ',res.duration+'ms')
+				// if(Array.isArray(res.data)) console.log(res.action+':','['+res.data.length+' records effected]',res.duration+'ms')
+				// else if(typeof res.data === 'number') console.log(res.action+':','['+res.data+' records effected]',res.duration+'ms')
+				// else console.log(res.action+': ',res.duration+'ms')
 
 				_resolve(res)
 
@@ -147,7 +153,7 @@ class Model {
 
 					if(IL > 3000) for(let k = 0; k < CL; k++) table.push(insert[i][columns[k]])
 					else table.push.apply(table, deflate(insert[i], columns))
-					// table = table.concat(deflate(insert[i], columns))
+
 				}
 
 			} else {
@@ -168,9 +174,11 @@ class Model {
 				oldTableLength = 1 * table.length
 
 			if(this.query.where) {
+
 				newTable = filter(function(record){
 					return !matches(record, where)
 				})
+
 			} else {
 				newTable = [] // nuke the table
 			}
