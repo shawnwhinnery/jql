@@ -46,12 +46,18 @@ var USER_COUNT = 1000,
 	FAILURES = 0,
 	SUCCESSES = 0,
 	TEST_START= Date.now(),
-	ERR = function(msg){console.log('!'.red.bold, msg); FAILURES++},
-	SUCCESS = function(msg, duration){console.log('√'.bold.green, msg, ('('+duration.toString()+'ms)').grey); SUCCESSES++},
+	ERR = function(msg){console.log('|'.grey,'!'.red.bold, msg); FAILURES++},
+	SUCCESS = function(msg, duration){console.log('|'.grey,'√'.bold.green, msg, ('('+duration.toString()+'ms)').grey); SUCCESSES++},
 	users = [],
 	comments = [],
-	cid = 0
+	cid = 0,
+	gstart = Date.now()
 
+console.log('+-------------------------------------------------------'.grey)
+console.log('|'.grey, 'Testing some shit chill out for a minute')
+// console.log('+-------------------------------------------------------'.grey)
+
+// console.log('|'.grey, 'Generating test data...')
 for(let u = 0; u < USER_COUNT; u++) {
 
 	users.push({
@@ -71,6 +77,8 @@ for(let u = 0; u < USER_COUNT; u++) {
 
 }
 
+console.log(['|', 'Generated '+(USER_COUNT + COMMENT_COUNT)+' objects in', Date.now() - gstart+'ms'].join(' ').grey)
+console.log('+-------------------------------------------------------'.grey)
 
 // Insert an array of objects into the database
 M.insert({'id': 1,'name': 'yolo'})
@@ -122,6 +130,25 @@ M.update('users')
  })
 
 M.update('users')
+ .set({name: 'Charles'})
+ .where({id:[10,20,30]})
+ .exec(function(res){
+
+	 M.select('users')
+	  .where({name:'Charles'})
+	  .exec(function(res2){
+
+			if(res.data !== 3) ERR('Update set where ( multiple "{id:[10,20,30]}" )')
+			else SUCCESS('Update set where ( multiple "{id:[10,20,30]}" )', res.duration)
+
+			if(res2.data.length !== 3) ERR('Select where ( multiple "{id:[10,20,30]}" )')
+			else SUCCESS('Select where ( multiple "{id:[10,20,30]}" )', res.duration)
+
+	  })
+
+ })
+
+M.update('users')
  .set({'name': 'Shawn'})
  .exec(function(res){
 	 M.select('users')
@@ -139,9 +166,8 @@ M.delete('users')
  })
 
 
-console.log()
-console.log('-----------------------------'.grey)
-console.log('Test completed in', Date.now() - TEST_START+'ms')
-console.log(SUCCESSES.toString().green, 'tests passed')
-console.log(FAILURES.toString().red, 'tests failed')
-console.log('-----------------------------'.grey)
+console.log('+-------------------------------------------------------'.grey)
+console.log('|'.grey,'Test completed in', Date.now() - TEST_START+'ms')
+console.log('|'.grey,SUCCESSES.toString().green, 'tests passed')
+console.log('|'.grey,FAILURES.toString().red, 'tests failed')
+console.log('+-------------------------------------------------------'.grey)

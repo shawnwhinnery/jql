@@ -13,7 +13,7 @@ class Model {
 		this.store = {}
 		this.query = {}
 
-		for(var table in schema) this.store[table] = this.store[table] || []
+		for(let table in schema) this.store[table] = this.store[table] || []
 
 	}
 
@@ -80,7 +80,7 @@ class Model {
 			CL = columns.length,
 			IL = insert.length,
 			iterate = function(iterator){
-				for(var i = 0; i < TL; i += CL) iterator(i, i + CL)
+				for(let i = 0; i < TL; i += CL) iterator(i, i + CL)
 			},
 			forEach = function(iterator){
 				iterate(function(start, end){
@@ -116,7 +116,7 @@ class Model {
 					duration: Date.now() - this.query.start
 				}
 
-				if(data) res.data = data
+				if(data !== undefined) res.data = data
 
 				this.store[this.query.table] = table
 
@@ -190,7 +190,6 @@ class Model {
 				map(function(slice){
 					return inflate(slice, columns)
 				})
-
 			return resolve(inflatedTable)
 
 		}
@@ -202,7 +201,7 @@ class Model {
 
 				iterate(function(start, end){
 					if(matches(table.slice(start,end), where)) {
-						for(var i = 0; i < set.length; i++) {
+						for(let i = 0; i < set.length; i++) {
 							table[start + i] = (set[i] !== undefined) ? set[i] : table[start + i]
 						}
 						recordsTouched++
@@ -214,7 +213,7 @@ class Model {
 			} else {
 
 				iterate(function(start, end){
-					for(var i = 0; i < set.length; i++) {
+					for(let i = 0; i < set.length; i++) {
 						table[start + i] = (set[i] !== undefined) ? set[i] : table[start + i]
 					}
 					recordsTouched++
@@ -242,7 +241,7 @@ class Model {
 function isValid(obj, columns){
 	if(!columns[0]) return true
 	var cl = columns.length
-	for(var c = 0; c < cl; c++) {
+	for(let c = 0; c < cl; c++) {
 		if( typeof obj[c] !== typeof columns[c]) return false
 	}
 	return true
@@ -251,7 +250,7 @@ function isValid(obj, columns){
 function deflate(obj, columns){
 	var record = [],
 		cl = columns.length
-	for(var c = 0; c < cl; c++) {
+	for(let c = 0; c < cl; c++) {
 		record.push(_.get(obj, columns[c]))
 	}
 	return record
@@ -259,19 +258,28 @@ function deflate(obj, columns){
 
 function inflate(array, columns){
 	var obj = {}
-	for(var c = 0; c < columns.length; c++) {
+	for(let c = 0; c < columns.length; c++) {
 		obj[columns[c]] = array[c]
 	}
 	return obj
 }
 
 function matches(test,where){
-	for(var k in where) {
-		if(test[k] !== where[k] && where[k] !== undefined) {
-			return false
+	var match = false
+	for(let k in where) {
+		if(Array.isArray(where[k])) {
+			for(let w = 0; w < where[k].length; w++) {
+				if(test[k] === where[k][w]) {
+					match = true;
+				}
+			}
+		} else {
+			if(test[k] === where[k] && where[k] !== undefined) {
+				match = true
+			}
 		}
 	}
-	return true
+	return match
 }
 
 // ---------------------------------------------------------
