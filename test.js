@@ -16,7 +16,8 @@ var Model = require('./index.js'),
 
 var M = new Model({
 	users: {
-		columns: ['id', 'name', 'date']
+		columns: ['id', 'name', 'date'],
+		type: ['number', 'string', 'number']
 	},
 	comments: {
 		columns: ['user', 'text']
@@ -34,6 +35,7 @@ for(let u = 0; u < 1000; u++) {
 		id: u,
 		name: 'joe',
 		date: Date.now()
+		// date: 'Date.now()'
 	})
 
 	for(let c = 0; c < 100; c++){
@@ -89,7 +91,7 @@ M.update('users')
 			M.select('comments')
 			 .where({user:res.data[0].id})
 			 .exec(function (res) {
-				//  console.log(res.data)
+				 console.log(res.data.length)
 			 })
 
 	  })

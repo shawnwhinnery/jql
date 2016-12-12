@@ -12,7 +12,7 @@ class Model {
 				schema:schema
 			})
 			this.worker.onMessage = function(e){
-				console.log(e)
+				// console.log(e)
 			}
 		}
 
@@ -77,6 +77,7 @@ class Model {
 		var table = _.get(this.store, this.query.table),
 			schema = _.get(this.schema, this.query.table),
 			columns = _.get(schema, 'columns'),
+			types = _.get(schema, 'types'),
 			resolve = resolve || function(results){ },
 			insert = this.query.insert || [],
 			set = deflate(this.query.set, columns),
@@ -143,7 +144,8 @@ class Model {
 			if(Array.isArray(insert)) {
 
 				for(let i = 0; i < IL; i++) {
-					if(IL > 5000) for(let k = 0; k < CL; k++) table.push(insert[i][columns[k]])
+
+					if(IL > 3000) for(let k = 0; k < CL; k++) table.push(insert[i][columns[k]])
 					else table.push.apply(table, deflate(insert[i], columns))
 					// table = table.concat(deflate(insert[i], columns))
 				}
@@ -151,7 +153,6 @@ class Model {
 			} else {
 
 				table.push.apply(table, deflate(insert, columns))
-				// table = table.concat(deflate(insert, columns))
 
 			}
 
@@ -242,10 +243,19 @@ class Model {
 
 
 // ---------------------------------------------------------
+function isValid(obj, columns){
+	if(!columns[0]) return true
+	var cl = columns.length
+	for(var c = 0; c < cl; c++) {
+		if( typeof obj[c] !== typeof columns[c]) return false
+	}
+	return true
+}
 
 function deflate(obj, columns){
-	var record = []
-	for(var c = 0; c < columns.length; c++) {
+	var record = [],
+		cl = columns.length
+	for(var c = 0; c < cl; c++) {
 		record.push(_.get(obj, columns[c]))
 	}
 	return record
